@@ -1,0 +1,7 @@
+#ignore generated images
+*.png
+
+#ignored folders
+__pycache__/
+.vscode/
+notes/
