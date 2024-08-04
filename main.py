@@ -1,5 +1,5 @@
 #import curses
-from pitch_sheet import PitchSheet
+from lenticular.pitch_sheet import PitchSheet, Interlacer
 
 #add menu here later
 def main():

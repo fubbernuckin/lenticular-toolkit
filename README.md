@@ -1,2 +1,3 @@
 # lenticular-toolkit
-A python toolkit for generating the images necessary to create lenticular prints.
+
+A toolkit written in python for generating interlaced images for lenticular prints.

@@ -14,6 +14,39 @@ class PitchSheet:
         self.page_dpi = page_dpi
         self.page_resolution = tuple(int(ele1 * ele2) for ele1, ele2 in zip(self.page_dimensions, self.page_dpi))
     
+    #generates one segment of the pitch sheet
+    #dynamically calculates its own dimensions with the given arguments
+    def generate_pitch_segment(self, available_space, segments, separation, lpi):
+        seg_horiz_space = available_space[0];
+        seg_vert_space = (available_space[1] / segments) * (1.0 - separation)
+        seg_space = (seg_horiz_space, seg_vert_space)
+        
+        seg_horiz_space_px = seg_space[0] * self.page_dpi[0]
+        seg_vert_space_px = seg_space[1] * self.page_dpi[1]
+        seg_space_px = (seg_horiz_space_px, seg_vert_space_px)
+        
+        ppl = self.page_dpi[0] / lpi #pixels per lenticule
+        
+        #generates a new image where a prerendered version of the segment is created
+        #this is so that the lines can be drawn on exact pixel coordinates, then the image can be resized to the correct area
+        lines = math.ceil(seg_space[0] * lpi) #number of lines in this segment
+        line_spacing = math.ceil(ppl)
+        pre_seg_res = (line_spacing * lines, int(seg_space_px[1]))
+        seg = Image.new(mode = "RGB", size = pre_seg_res, color = (255, 255, 255))
+        seg_draw = ImageDraw.Draw(seg)
+        #this loop fills pre_seg image with lines
+        for j in range(0, pre_seg_res[0], line_spacing):
+            seg_draw.line([j, 0, j, pre_seg_res[1]], fill = (0, 0, 0), width = 1)
+        #resize by ppl/line_spacing
+        correction_res = (int(pre_seg_res[0] * (ppl/line_spacing)), int(seg_space_px[1]))
+        seg = seg.resize(correction_res, resample = Image.BICUBIC)
+        seg = seg.crop((int(correction_res[0] - seg_space_px[0]), 0, seg_space_px[0] - (correction_res[0] - seg_space_px[0]), seg_space_px[1]))
+        
+        return seg
+    
+    def generate_segment_text(self, lpi):
+        pass
+    
     #this function generates the image for the printable pitch sheet and saves it to the specified directory
     #segments represents how many rows of pitch tests will print on the page
     #separation is the ratio of pitch test to gap between tests. values range from 0.0 (no white space) to 1.0 (only white space)
@@ -26,46 +59,24 @@ class PitchSheet:
         available_space = (available_horiz, available_vert)
         
         #loop generates the images for each pitch segment and pastes it onto the original image
+        
         for i in range(segments):
-            seg_horiz_space = available_space[0];
-            seg_vert_space = (available_space[1] / segments) * (1.0 - separation)
-            seg_space = (seg_horiz_space, seg_vert_space)
             seg_horiz_pos = margins[3] + num_width
             seg_vert_pos = margins[0] + header_height + (i * (available_space[1] / segments))
             seg_pos = (seg_horiz_pos, seg_vert_pos)
             
-            seg_horiz_space_px = seg_space[0] * self.page_dpi[0]
-            seg_vert_space_px = seg_space[1] * self.page_dpi[1]
-            seg_space_px = (seg_horiz_space_px, seg_vert_space_px)
             seg_horiz_pos_px = seg_pos[0] * self.page_dpi[0]
             seg_vert_pos_px = seg_pos[1] * self.page_dpi[1]
             seg_pos_px = (seg_horiz_pos_px, seg_vert_pos_px)
             
-            draw = ImageDraw.Draw(bg)
-            #draw.rectangle([seg_pos_px[0], seg_pos_px[1], seg_pos_px[0] + seg_space_px[0], seg_pos_px[1] + seg_space_px[1]], outline = (0, 0, 0), width = 2)
-            
             xp = [0, segments - 1]
             fp = [self.low_pitch, self.high_pitch]
             lpi = np.interp(i, xp, fp)
-            ppl = self.page_dpi[0] / lpi #pixels per lenticule
             
-            #generates a new image where a prerendered version of the segment is created
-            #this is so that the lines can be drawn on exact pixel coordinates, then the image can be resized to the correct area
-            lines = math.ceil(seg_space[0] * lpi) #number of lines in this segment
-            line_spacing = math.ceil(ppl)
-            pre_seg_res = (line_spacing * lines, int(seg_space_px[1]))
-            seg = Image.new(mode = "RGB", size = pre_seg_res, color = (255, 255, 255))
-            seg_draw = ImageDraw.Draw(seg)
-            #this loop fills pre_seg image with lines
-            for j in range(0, pre_seg_res[0], line_spacing):
-                seg_draw.line([j, 0, j, pre_seg_res[1]], fill = (0, 0, 0), width = 1)
-            #resize by ppl/line_spacing
-            correction_res = (int(pre_seg_res[0] * (ppl/line_spacing)), int(seg_space_px[1]))
-            seg = seg.resize(correction_res, resample = Image.BICUBIC)
-            seg = seg.crop((int(correction_res[0] - seg_space_px[0]), 0, seg_space_px[0] - (correction_res[0] - seg_space_px[0]), seg_space_px[1]))
-            
+            seg = self.generate_pitch_segment(available_space, segments, separation, lpi)
             bg.paste(seg, (int(seg_pos_px[0]), int(seg_pos_px[1])))
+            
+            draw = ImageDraw.Draw(bg)
+            draw.rectangle([seg_pos_px[0], seg_pos_px[1], seg_pos_px[0] + seg.size[0], seg_pos_px[1] + seg.size[1]], outline = (0, 0, 0), width = 2)
         
         bg.save(directory)
-        
-        
