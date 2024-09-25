@@ -43,13 +43,18 @@ class PitchSheet:
         return seg
     
     #this function generates the image of the text labels showing the lpi of each pitch segment
-    #font is the truetype font to be used, which also determines the size of the text
+    #fnt_path is an OS path (as in 'from os import path') to a truetype font to be used
+    #fnt_size is a float representing the size of the font relative to the vertical size of the image generated, where 0.0 is infinitely small, and 1.0 fills the image vertically
     #size_in is a tuple providing the dimensions of the segment label in inches
     #size_px is a tuple providing the dimensions in pixels
     #lpi is the number that the function will render and place next to the segment
-    def _generate_segment_label(self, font, size_in, size_px, lpi):
-        lab = Image.new(mode = "RGB", size = (int(size_px[0]), int(size_px[1])), color = (255, 0, 0))
-        
+    #text renders aligned left, vertically centered in the box
+    def _generate_segment_label(self, fnt_path, fnt_size, size_in, size_px, lpi):
+        fnt_vert = size_px[1]/4.0 + fnt_size/2.0 #vertical offset of text
+        fnt = ImageFont.truetype(fnt_path, int(size_px[1] * fnt_size)) #font for pitch segment labels
+        lab = Image.new(mode = "RGB", size = (int(size_px[0]), int(size_px[1])), color = (255, 255, 255))
+        lab_draw = ImageDraw.Draw(lab)
+        lab_draw.text((0,fnt_vert), "{:0.2f}".format(lpi), font = fnt, fill=(0,0,0))
         return lab
     
     #this function generates the image of the text header at the top of the pitch sheet page
@@ -119,9 +124,8 @@ class PitchSheet:
             bg.paste(seg, (int(seg_pos_px[0]), int(seg_pos_px[1])))
             
             fnt_path = path.join(path.dirname(path.dirname(__file__)), "fonts/Roboto/Roboto-Regular.ttf")
-            lab_fnt = ImageFont.truetype(fnt_path, int(lab_space_px[1])) #font for pitch segment labels
             #lab_fnt = ImageFont.truetype("../fonts/Roboto/Roboto-Regular.ttf", int(lab_space_px[1])) #font for pitch segment labels
-            lab = self._generate_segment_label(lab_fnt, lab_space, lab_space_px, lpi)
+            lab = self._generate_segment_label(fnt_path, 0.35, lab_space, lab_space_px, lpi)
             bg.paste(lab, (int(lab_pos_px[0]), int(lab_pos_px[1])))
             
             draw = ImageDraw.Draw(bg)
