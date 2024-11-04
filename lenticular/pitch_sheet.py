@@ -90,7 +90,7 @@ class PitchSheet:
             adjusted_dimensions = (round(self.page_dimensions[0] * 2.54, 3), round(self.page_dimensions[1] * 2.54, 3))
         else:
             unit_indicator = "in"
-            adjusted_dimensions = (round(self.page_dimensions[0], 3), round(self.page_dimensions[0], 3))
+            adjusted_dimensions = (round(self.page_dimensions[0], 3), round(self.page_dimensions[1], 3))
         info_text = f"Page dimensions ({unit_indicator}): {adjusted_dimensions[0]} x {adjusted_dimensions[1]}\n"\
             f"DPI: {self.page_dpi[0]} x {self.page_dpi[1]}\n"\
             f"Resolution: {self.page_resolution[0]} x {self.page_resolution[1]}"
