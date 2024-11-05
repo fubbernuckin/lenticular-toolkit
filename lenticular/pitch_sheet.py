@@ -43,7 +43,7 @@ class PitchSheet:
             seg_draw.line([j, 0, j, pre_seg_res[1]], fill = (0, 0, 0), width = 1)
         #resize by ppl/line_spacing
         correction_res = (int(pre_seg_res[0] * (ppl/line_spacing)), int(size_px[1]))
-        seg = seg.resize(correction_res, resample = Image.LINEAR)
+        seg = seg.resize(correction_res, resample = Image.BILINEAR)
         seg = seg.crop((0, 0, size_px[0], size_px[1]))
         
         return seg
@@ -56,11 +56,19 @@ class PitchSheet:
     #lpi is the number that the function will render and place next to the segment
     #text renders aligned left, vertically centered in the box
     def _generate_segment_label(self, fnt_path, fnt_size, size_px, lpi):
+        txt = "{:0.3f}".format(lpi)
         fnt_vert = size_px[1]/4.0 + fnt_size/2.0 #vertical offset of text
         fnt = ImageFont.truetype(fnt_path, int(size_px[1] * fnt_size)) #font for pitch segment labels
-        lab = Image.new(mode = "RGB", size = (int(size_px[0]), int(size_px[1])), color = (255, 255, 255))
+        txt_width:int
+        if(fnt.getlength(txt) > size_px[0]):
+            txt_width = fnt.getlength(txt)
+        else:
+            txt_width = size_px[0]
+        lab = Image.new(mode = "RGB", size = (int(txt_width), int(size_px[1])), color = (255, 255, 255))
         lab_draw = ImageDraw.Draw(lab)
-        lab_draw.text((0,fnt_vert), "{:0.3f}".format(lpi), font = fnt, fill=(0,0,0))
+        lab_draw.text((0,fnt_vert), txt, font = fnt, fill=(0,0,0))
+        if (txt_width > size_px[0]):
+            lab = lab.resize((int(size_px[0]), int(size_px[1])), Image.BICUBIC)
         return lab
     
     #this function generates the image of the text header at the top of the pitch sheet page
@@ -70,21 +78,11 @@ class PitchSheet:
     #head_fnt_size is a float representing the size of the header font relative to the vertical size of the image generated, where 0.0 is infinitely small, and 1.0 fills the image vertically
     #size_px is a tuple providing the dimensions in pixels
     def _generate_header_text(self, fnt_path, info_fnt_size, head_fnt_size, size_px):
-        #info to include:
-        #page dimensions
-        #page dpi
-        #page resolution
-        
         head_fnt = ImageFont.truetype(fnt_path, int(size_px[1] * head_fnt_size)) #font for the main header
         info_fnt = ImageFont.truetype(fnt_path, int(size_px[1] * info_fnt_size)) #font for the info subheader
-        head = Image.new("RGBA", (int(size_px[0]), int(size_px[1])), color = (255, 255, 255, 0))
-        head_draw = ImageDraw.Draw(head)
         
-        head_pos = (size_px[0] / 2.0, head_fnt_size * size_px[1])
-        head_draw.text(head_pos, "Pitch Sheet", font = head_fnt, anchor = "ms", fill = (0, 0, 0))
-        info_pos = (size_px[0], size_px[1])
-        unit_indicator = ""
-        adjusted_dimensions:tuple
+        unit_indicator:str
+        adjusted_dimensions:tuple #dimensions adjusted for units
         if (self.metric):
             unit_indicator = "cm"
             adjusted_dimensions = (round(self.page_dimensions[0] * 2.54, 3), round(self.page_dimensions[1] * 2.54, 3))
@@ -94,7 +92,19 @@ class PitchSheet:
         info_text = f"Page dimensions ({unit_indicator}): {adjusted_dimensions[0]} x {adjusted_dimensions[1]}\n"\
             f"DPI: {self.page_dpi[0]} x {self.page_dpi[1]}\n"\
             f"Resolution: {self.page_resolution[0]} x {self.page_resolution[1]}"
+        head_text = "Pitch Sheet"
+        head_width = max(head_fnt.getlength(head_text), info_fnt.getlength(info_text))
+        if (head_width < size_px[0]):
+            head_width = size_px[0]
+        head_pos = (head_width / 2.0, head_fnt_size * size_px[1])
+        info_pos = (head_width, size_px[1])
+        
+        head = Image.new("RGB", (int(head_width), int(size_px[1])), color = (255, 255, 255))
+        head_draw = ImageDraw.Draw(head)
+        
+        head_draw.text(head_pos, head_text, font = head_fnt, anchor = "ms", fill = (0, 0, 0))
         head_draw.multiline_text(info_pos, info_text, font = info_fnt, anchor = "rd", align = "right", fill = (0, 0, 0))
+        head = head.resize((int(size_px[0]), int(size_px[1])), Image.BICUBIC)
         return head
     
     #this function generates the image for the printable pitch sheet and saves it to the specified directory
